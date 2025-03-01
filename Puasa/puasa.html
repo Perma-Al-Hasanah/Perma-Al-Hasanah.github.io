@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jadwal Sholat & Notifikasi</title>
+    <link rel="stylesheet" href="styles.css">
+    <script defer src="script.js"></script>
+    
+    <style>
+        body {
+    font-family: Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #fff3cd;
+    margin: 0;
+    padding: 20px;
+}
+
+.container {
+    text-align: center;
+    background: #ffeb99;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+    max-width: 90%;
+}
+
+h1 {
+    color: #856404;
+}
+
+#countdown {
+    margin-top: 10px;
+    font-size: 18px;
+    font-weight: bold;
+    color: #856404;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+th, td {
+    border: 1px solid #daa520;
+    padding: 10px;
+    text-align: center;
+}
+
+th {
+    background: #ffcc00;
+    color: white;
+}
+
+button {
+    margin-top: 10px;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: 0.3s;
+}
+
+#startNotif {
+    background-color: #28a745;
+    color: white;
+}
+
+#stopNotif {
+    background-color: #dc3545;
+    color: white;
+}
+
+button:hover {
+    opacity: 0.8;
+}
+
+a {
+    display: inline-block;
+    margin-top: 10px;
+    color: #856404;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* Responsiveness */
+@media (max-width: 768px) {
+    .container {
+        width: 100%;
+        padding: 15px;
+    }
+    
+    table {
+        font-size: 14px;
+    }
+    
+    button {
+        font-size: 14px;
+        padding: 8px 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    table {
+        font-size: 12px;
+    }
+    
+    button {
+        font-size: 12px;
+        padding: 6px 10px;
+    }
+}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Jadwal Sholat Hari Ini</h1>
+        <table>
+            <thead>
+                <tr>
+                    <th>Waktu</th>
+                    <th>Jam</th>
+                </tr>
+            </thead>
+            <tbody id="jadwal"></tbody>
+        </table>
+        <div id="countdown"></div>
+        <a href="../index.html">Kembali</a>
+        <button id="startNotif">Aktifkan Notifikasi</button>
+        <button id="stopNotif" style="display:none;">Matikan Notifikasi</button>
+    </div>
+
+    <script>
+        let notifInterval;
+        async function fetchJadwal() {
+            const response = await fetch('https://api.aladhan.com/v1/timingsByCity?city=Medan&country=Indonesia&method=2');
+            const data = await response.json();
+            const jadwal = data.data.timings;
+            const jadwalTable = document.getElementById('jadwal');
+            jadwalTable.innerHTML = '';
+
+            const waktuSholat = {
+                Imsak: 'Imsak',
+                Fajr: 'Subuh',
+                Dhuhr: 'Dzuhur',
+                Asr: 'Ashar',
+                Maghrib: 'Maghrib (Buka Puasa)',
+                Isha: 'Isya'
+            };
+
+            Object.keys(waktuSholat).forEach(waktu => {
+                const row = `<tr><td>${waktuSholat[waktu]}</td><td>${jadwal[waktu]}</td></tr>`;
+                jadwalTable.innerHTML += row;
+            });
+
+            updateCountdown(jadwal, waktuSholat);
+        }
+
+        function updateCountdown(jadwal, waktuSholat) {
+    const now = new Date();
+    let nearestTime;
+    let nearestLabel;
+
+    Object.keys(waktuSholat).forEach(waktu => {
+        const [hour, minute] = jadwal[waktu].split(':');
+        const sholatTime = new Date();
+        sholatTime.setHours(hour, minute, 0, 0);
+
+        if (sholatTime > now && (!nearestTime || sholatTime < nearestTime)) {
+            nearestTime = sholatTime;
+            nearestLabel = waktuSholat[waktu];
+        }
+    });
+
+    if (nearestTime) {
+        setInterval(() => {
+            const now = new Date();
+            const diff = Math.floor((nearestTime - now) / 1000);
+
+            if (diff > 0) {
+                const hours = Math.floor(diff / 3600);
+                const minutes = Math.floor((diff % 3600) / 60);
+                const seconds = diff % 60;
+
+                document.getElementById('countdown').textContent = 
+                    `Menuju waktu ${nearestLabel} dalam ${hours} jam ${minutes} menit ${seconds} detik`;
+            } else {
+                document.getElementById('countdown').textContent = 'Waktu sholat telah tiba!';
+            }
+        }, 1000);
+    }
+}
+
+
+        function showNotification(title, message) {
+            if (Notification.permission === 'granted') {
+                new Notification(title, { body: message });
+            }
+        }
+
+        function checkNotifications() {
+            fetch('https://api.aladhan.com/v1/timingsByCity?city=Medan&country=Indonesia&method=2')
+                .then(response => response.json())
+                .then(data => {
+                    const jadwal = data.data.timings;
+                    const now = new Date();
+                    const currentTime = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
+                    
+                    Object.keys(jadwal).forEach(waktu => {
+                        if (jadwal[waktu].slice(0, 5) === currentTime) {
+                            showNotification('Waktu Sholat', `Saatnya ${waktu}`);
+                        }
+                    });
+                });
+        }
+
+        document.getElementById('startNotif').addEventListener('click', () => {
+            if (Notification.permission !== 'granted') {
+                Notification.requestPermission();
+            }
+            notifInterval = setInterval(checkNotifications, 60000);
+            document.getElementById('startNotif').style.display = 'none';
+            document.getElementById('stopNotif').style.display = 'inline-block';
+        });
+
+        document.getElementById('stopNotif').addEventListener('click', () => {
+            clearInterval(notifInterval);
+            document.getElementById('startNotif').style.display = 'inline-block';
+            document.getElementById('stopNotif').style.display = 'none';
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchJadwal();
+        });
+    </script>
+</body>
+</html>

@@ -141,118 +141,135 @@
 
     <script>
         let notifInterval;
-        let countdownInterval;
+let countdownInterval;
 
-        async function fetchJadwal() {
-            const response = await fetch('puasa.json'); // Mengambil data dari file puasa.json
-            const data = await response.json();
-            const today = new Date().toISOString().split('T')[0]; // Mendapatkan tanggal hari ini (format YYYY-MM-DD)
-            
-            const jadwalHariIni = data.data.find(item => item.date === today); // Mencari data dengan tanggal hari ini
+async function fetchJadwal() {
+    const response = await fetch('puasa.json'); // Mengambil data dari file puasa.json
+    const data = await response.json();
+    const today = new Date().toISOString().split('T')[0]; // Mendapatkan tanggal hari ini (format YYYY-MM-DD)
+    
+    // Mencari data dengan tanggal hari ini
+    const jadwalHariIni = data.data.find(item => item.date === today);
 
-            if (!jadwalHariIni) {
-                document.getElementById('jadwal').innerHTML = 'Jadwal tidak ditemukan untuk hari ini';
-                return;
-            }
+    if (!jadwalHariIni) {
+        document.getElementById('jadwal').innerHTML = 'Jadwal tidak ditemukan untuk hari ini';
+        return;
+    }
 
-            const jadwal = jadwalHariIni.timings;
-            const jadwalTable = document.getElementById('jadwal');
-            jadwalTable.innerHTML = '';
+    const jadwal = jadwalHariIni.timings;
+    const jadwalTable = document.getElementById('jadwal');
+    jadwalTable.innerHTML = '';
 
-            const waktuSholat = {
-                Imsak: 'Imsak',
-                Shubuh: 'Subuh',
-                Dhuhr: 'Dzuhur',
-                Asr: 'Ashar',
-                Maghrib: 'Maghrib (Buka Puasa)',
-                Isha: 'Isya'
-            };
+    const waktuSholat = {
+        Imsak: 'Imsak',
+        Shubuh: 'Subuh',
+        Dhuhr: 'Dzuhur',
+        Asr: 'Ashar',
+        Maghrib: 'Maghrib (Buka Puasa)',
+        Isha: 'Isya'
+    };
 
-            Object.keys(waktuSholat).forEach(waktu => {
-                const row = `<tr><td>${waktuSholat[waktu]}</td><td>${jadwal[waktu]}</td></tr>`;
-                jadwalTable.innerHTML += row;
-            });
+    // Menampilkan tabel waktu sholat
+    Object.keys(waktuSholat).forEach(waktu => {
+        const row = `<tr><td>${waktuSholat[waktu]}</td><td>${jadwal[waktu]}</td></tr>`;
+        jadwalTable.innerHTML += row;
+    });
 
-            updateCountdown(jadwal, waktuSholat);
+    updateCountdown(jadwal, waktuSholat);
+}
+
+function updateCountdown(jadwal, waktuSholat) {
+    const now = new Date();
+    let nearestTime;
+    let nearestLabel;
+
+    Object.keys(waktuSholat).forEach(waktu => {
+        const [hour, minute] = jadwal[waktu].split(':');
+        const sholatTime = new Date();
+        sholatTime.setHours(hour, minute, 0, 0);
+
+        // Mencari waktu sholat yang paling dekat dengan waktu sekarang
+        if (sholatTime > now && (!nearestTime || sholatTime < nearestTime)) {
+            nearestTime = sholatTime;
+            nearestLabel = waktuSholat[waktu];
         }
+    });
 
-        function updateCountdown(jadwal, waktuSholat) {
+    if (nearestTime) {
+        clearInterval(countdownInterval); // Clear previous interval if exists
+        countdownInterval = setInterval(() => {
             const now = new Date();
-            let nearestTime;
-            let nearestLabel;
+            const diff = Math.floor((nearestTime - now) / 1000);
 
-            Object.keys(waktuSholat).forEach(waktu => {
-                const [hour, minute] = jadwal[waktu].split(':');
-                const sholatTime = new Date();
-                sholatTime.setHours(hour, minute, 0, 0);
+            if (diff > 0) {
+                const hours = Math.floor(diff / 3600);
+                const minutes = Math.floor((diff % 3600) / 60);
+                const seconds = diff % 60;
 
-                if (sholatTime > now && (!nearestTime || sholatTime < nearestTime)) {
-                    nearestTime = sholatTime;
-                    nearestLabel = waktuSholat[waktu];
+                document.getElementById('countdown').textContent = 
+                    `Menuju waktu ${nearestLabel} dalam ${hours} jam ${minutes} menit ${seconds} detik`;
+            } else {
+                document.getElementById('countdown').textContent = 'Waktu sholat telah tiba!';
+                clearInterval(countdownInterval); // Stop the countdown when the time is reached
+            }
+        }, 1000);
+    }
+}
+
+function showNotification(title, message) {
+    if (Notification.permission === 'granted') {
+        new Notification(title, { body: message });
+    }
+}
+
+function checkNotifications() {
+    fetch('puasa.json') // Ambil data dari file JSON
+        .then(response => response.json())
+        .then(data => {
+            const jadwal = data.data.find(item => item.date === new Date().toISOString().split('T')[0]).timings;
+            const now = new Date();
+            const currentTime = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+            // Cek apakah waktu sholat saat ini sama dengan waktu di JSON
+            Object.keys(jadwal).forEach(waktu => {
+                if (jadwal[waktu].slice(0, 5) === currentTime) {
+                    showNotification('Waktu Sholat', `Saatnya ${waktu}`);
                 }
             });
-
-            if (nearestTime) {
-                clearInterval(countdownInterval); // Clear previous interval if exists
-                countdownInterval = setInterval(() => {
-                    const now = new Date();
-                    const diff = Math.floor((nearestTime - now) / 1000);
-
-                    if (diff > 0) {
-                        const hours = Math.floor(diff / 3600);
-                        const minutes = Math.floor((diff % 3600) / 60);
-                        const seconds = diff % 60;
-
-                        document.getElementById('countdown').textContent = 
-                            `Menuju waktu ${nearestLabel} dalam ${hours} jam ${minutes} menit ${seconds} detik`;
-                    } else {
-                        document.getElementById('countdown').textContent = 'Waktu sholat telah tiba!';
-                        clearInterval(countdownInterval); // Stop the countdown when the time is reached
-                    }
-                }, 1000);
-            }
-        }
-
-        function showNotification(title, message) {
-            if (Notification.permission === 'granted') {
-                new Notification(title, { body: message });
-            }
-        }
-
-        function checkNotifications() {
-            fetch('puasa.json') // Ambil data dari file JSON
-                .then(response => response.json())
-                .then(data => {
-                    const jadwal = data.data.find(item => item.date === new Date().toISOString().split('T')[0]).timings;
-                    const now = new Date();
-                    const currentTime = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
-
-                    Object.keys(jadwal).forEach(waktu => {
-                        if (jadwal[waktu].slice(0, 5) === currentTime) {
-                            showNotification('Waktu Sholat', `Saatnya ${waktu}`);
-                        }
-                    });
-                });
-        }
-
-        document.getElementById('startNotif').addEventListener('click', () => {
-            if (Notification.permission !== 'granted') {
-                Notification.requestPermission();
-            }
-            notifInterval = setInterval(checkNotifications, 60000); // Cek setiap menit
-            document.getElementById('startNotif').style.display = 'none';
-            document.getElementById('stopNotif').style.display = 'inline-block';
         });
+}
 
-        document.getElementById('stopNotif').addEventListener('click', () => {
-            clearInterval(notifInterval); // Matikan notifikasi
-            document.getElementById('startNotif').style.display = 'inline-block';
-            document.getElementById('stopNotif').style.display = 'none';
-        });
+function startNotifications() {
+    if (Notification.permission !== 'granted') {
+        Notification.requestPermission();
+    }
+    notifInterval = setInterval(checkNotifications, 60000); // Cek setiap menit
+    localStorage.setItem('notifEnabled', 'true'); // Menyimpan status notifikasi di localStorage
+    document.getElementById('startNotif').style.display = 'none';
+    document.getElementById('stopNotif').style.display = 'inline-block';
+}
 
-        document.addEventListener('DOMContentLoaded', () => {
-            fetchJadwal(); // Ambil jadwal sholat saat halaman dimuat
-        });
+function stopNotifications() {
+    clearInterval(notifInterval); // Matikan notifikasi
+    localStorage.setItem('notifEnabled', 'false'); // Menyimpan status notifikasi di localStorage
+    document.getElementById('startNotif').style.display = 'inline-block';
+    document.getElementById('stopNotif').style.display = 'none';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    fetchJadwal(); // Ambil jadwal sholat saat halaman dimuat
+
+    // Mengecek apakah notifikasi sudah diaktifkan sebelumnya
+    if (localStorage.getItem('notifEnabled') === 'true') {
+        document.getElementById('startNotif').style.display = 'none';
+        document.getElementById('stopNotif').style.display = 'inline-block';
+    }
+
+    // Mengaktifkan atau menonaktifkan notifikasi
+    document.getElementById('startNotif').addEventListener('click', startNotifications);
+    document.getElementById('stopNotif').addEventListener('click', stopNotifications);
+});
+
     </script>
 </body>
 </html>

@@ -124,6 +124,12 @@
         font-size: 0.9em;
       }
     }
+
+    /* Disabled style */
+    .disabled {
+      pointer-events: none;
+      opacity: 0.5;
+    }
   </style>
 </head>
 <body>
@@ -136,14 +142,14 @@
       <section class="btn-content">
         <h3>Informasi Lengkap</h3>
         <div class="btn">
-          <a href="https://rajendrazero.github.io/PERMA-Al-Hasanah-/">Web Resmi PERMA Al-Hasanah</a>
+          <a href="https://rajendrazero.github.io/PERMA-Al-Hasanah-/" class="disabled"  id="infoLink">Web Resmi PERMA Al-Hasanah</a>
         </div>
       </section>
       
       <section class="btn-content">
         <h3>Program Ramadhan</h3>
         <div class="btn">
-          <a href="Puasa/puasa.html">Jadwal Sahur dan Berbuka Kota Medan</a>
+          <a href="Puasa/puasa.html" id="ramadhanLink">Jadwal Sahur dan Berbuka Kota Medan</a>
         </div>
         
       </section>
@@ -151,11 +157,34 @@
       <section class="btn-content">
         <h3>Social Media</h3>
         <div class="btn">
-          <a href="https://www.instagram.com/perma_alhasanah?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==">Instagram</a>
+          <a href="https://www.instagram.com/perma_alhasanah?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==" id="socialLink">Instagram</a>
         </div>
       </section>
       
     </div>
   </div>
+
+  <script>
+    // Function to check if the link has the 'disabled' class
+    function handleLinkClick(event) {
+      const link = event.target;
+      if (link.classList.contains('disabled')) {
+        event.preventDefault(); // Prevent the link from being followed
+        alert("Maaf, masih proses pembuatan"); // Display the alert
+      }
+    }
+
+    // Add event listeners to the links after the page loads
+    window.addEventListener('DOMContentLoaded', (event) => {
+      const infoLink = document.getElementById('infoLink');
+      const ramadhanLink = document.getElementById('ramadhanLink');
+      const socialLink = document.getElementById('socialLink');
+      
+      // Check if the links exist before adding event listeners
+      if (infoLink) infoLink.addEventListener('click', handleLinkClick);
+      if (ramadhanLink) ramadhanLink.addEventListener('click', handleLinkClick);
+      if (socialLink) socialLink.addEventListener('click', handleLinkClick);
+    });
+  </script>
 </body>
 </html>
